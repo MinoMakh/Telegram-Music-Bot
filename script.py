@@ -32,6 +32,10 @@ sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 def sanitize_filename(filename):
     return re.sub(r'[\\/*?:"<>|]', "", filename)
 
+# Function to sanitize song names (Remove everything but alphanumeric characters and spaces)
+def sanitize_song_name(song_name):
+    return re.sub(r"[^\w\s]", "", song_name)
+
 
 # Set up Telegram Bot
 def get_bot(token):
@@ -160,6 +164,7 @@ async def send_song(
 # Using 'latin1' encoding to handle potential Western European characters in the file.
 # It ensures correct reading of files with non-ASCII characters without errors, especially in legacy systems.
 def update_posted_songs_file(artist_name, song_name):
+    sanitized_song_name = sanitize_song_name(song_name)
     artist_folder = f"./songs/{sanitize_filename(artist_name)}"
     os.makedirs(artist_folder, exist_ok=True)
     file_path = os.path.join(artist_folder, "posted_songs.txt")
@@ -169,22 +174,9 @@ def update_posted_songs_file(artist_name, song_name):
         with open(file_path, "r", encoding="latin1") as f:
             posted_songs = set(f.read().splitlines())
 
-    if song_name not in posted_songs:
+    if sanitized_song_name not in posted_songs:
         with open(file_path, "a") as f:
-            f.write(f"{song_name}\n")
-
-
-# Function to get posted songs from the file
-async def get_posted_songs(channel_id):
-    artist_folder = f"./songs/{sanitize_filename(channel_id)}"
-    file_path = os.path.join(artist_folder, "posted_songs.txt")
-
-    posted_songs = set()
-    if os.path.exists(file_path):
-        with open(file_path, "r") as f:
-            posted_songs = set(f.read().splitlines())
-
-    return posted_songs
+            f.write(f"{sanitized_song_name}\n")
 
 
 # Function to check and post new songs
@@ -192,7 +184,6 @@ async def get_posted_songs(channel_id):
 # It ensures correct reading of files with non-ASCII characters without errors, especially in legacy systems.
 async def check_and_post_new_songs(bot, artist_name, channel_id):
     artist_songs = get_songs_by_artist(artist_name)
-    posted_songs = await get_posted_songs(channel_id)
 
     artist_folder = f"./songs/{sanitize_filename(artist_name)}"
     os.makedirs(artist_folder, exist_ok=True)
@@ -202,9 +193,9 @@ async def check_and_post_new_songs(bot, artist_name, channel_id):
     if os.path.exists(file_path):
         with open(file_path, "r", encoding="latin1") as f:
             file_posted_songs = set(f.read().splitlines())
-
+            
     for song in artist_songs:
-        if song["name"] not in posted_songs and song["name"] not in file_posted_songs:
+        if sanitize_song_name(song["name"]) not in file_posted_songs:
             mp3_file, youtube_url = download_song(song["name"], song["artist"])
 
             if mp3_file:
