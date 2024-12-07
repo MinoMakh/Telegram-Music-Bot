@@ -32,9 +32,9 @@ sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
 def sanitize_filename(filename):
     return re.sub(r'[\\/*?:"<>|]', "", filename)
 
-# Function to sanitize song names (Remove everything but alphanumeric characters and spaces)
+# Function to sanitize song names (Remove everything but ASCII alphanumeric characters and spaces)
 def sanitize_song_name(song_name):
-    return re.sub(r"[^\w\s]", "", song_name)
+    return re.sub(r"[^\x20-\x7E]", "", song_name)
 
 
 # Set up Telegram Bot
